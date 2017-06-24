@@ -69,9 +69,9 @@ public class MainActivity extends AppCompatActivity {
         map.put("oauth_token", "paJTN0ZA6KJGAWgHDRKPVNgFBOOe.qMOl8x5pY2W");
         map.put("oauth_token_secret", "SA5hjGn4A66R2JqraD51IhxVZZX6ELLW4NHMAVWC");
 
-        RequestToUcoz requestToUcoz = new RequestToUcoz(map);
+        RequestToUcoz requestToUcoz = new RequestToUcoz();
         try{
-            textView.setText(requestToUcoz.get());
+            textView.setText(requestToUcoz.get(map));
         } catch (Exception e){
 
         }

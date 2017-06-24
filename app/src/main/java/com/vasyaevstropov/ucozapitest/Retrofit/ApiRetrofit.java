@@ -16,5 +16,4 @@ public interface ApiRetrofit {
     @GET("uapi/shop/request")
     Call<String> getShopCategories
             (@FieldMap Map<String, String> map);
-
 }

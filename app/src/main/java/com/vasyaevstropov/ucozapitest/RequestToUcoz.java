@@ -8,9 +8,13 @@ import com.vasyaevstropov.ucozapitest.Retrofit.ApiRetrofit;
 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
+import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,8 +35,17 @@ public class RequestToUcoz {
     private Map<String, String> params;
     private final String ENC = "UTF-8";
      String time, oauth_nonce;
+    private final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
+    public RequestToUcoz() {
 
-    public RequestToUcoz(Map<String, String> config) {
+
+    }
+
+    private String getTime() {
+        return String.valueOf(System.currentTimeMillis());
+    }
+
+    private void setConfig (Map<String, String> config){
         this.config = config;
 
         time = getTime();
@@ -45,12 +58,8 @@ public class RequestToUcoz {
         params.put("oauth_signature_method", "HMAC-SHA1");
         params.put("oauth_consumer_key", config.get("oauth_consumer_key"));
         params.put("oauth_token", config.get("oauth_token"));
-
     }
 
-    private String getTime() {
-        return String.valueOf(System.currentTimeMillis() % 1000);
-    }
 
     private static String oauth_nonce() {
         Long time = System.currentTimeMillis();
@@ -89,23 +98,26 @@ public class RequestToUcoz {
     private String getSignature(String method, String url, String params)
             throws UnsupportedEncodingException, NoSuchAlgorithmException,
             InvalidKeyException {
-        StringBuilder base = new StringBuilder();
-        base.append(method+"&");
-        base.append(url);
-        base.append("&");
-        base.append(params);
 
-        Log.d("Log.d", "Base string: " + base.toString());
+        String baseString = method+"&"
+                + URLEncoder.encode(url, "UTF-8") +
+                "&" + URLEncoder.encode(params, "UTF-8");
+        Log.d("Log.d", "Base string: " + baseString);
 
-        byte[] keyBytes = (config.get("") + "&").getBytes(ENC);
-        SecretKey key = new SecretKeySpec(keyBytes, "HMAC-SHA1");
-        Mac mac = Mac.getInstance("HMAC-SHA1");
-        mac.init(key);
-        return new String(Base64.encode(mac.doFinal(base.toString().getBytes(ENC)), Base64.DEFAULT), ENC).trim();
+        String a = "";
+        try{
+            a =Base64.encodeToString(calculateRFC2104HMAC(baseString, config.get("oauth_consumer_secret")+"&"+config.get("oauth_token_secret")), Base64.CRLF).trim();
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return a;
     }
 
-    public String get()
+    public String get(Map<String, String> config)
     throws UnsupportedEncodingException,NoSuchAlgorithmException, InvalidKeyException{
+        setConfig(config);
+
         final StringBuilder answer = null;
 
         String signature = getSignature("GET","http://artmurka.com/uapi/shop/request",
@@ -151,6 +163,27 @@ public class RequestToUcoz {
             }
         });
         return answer.toString();
+    }
+
+
+    private String toHexString(byte[] bytes) {
+        Formatter formatter = new Formatter();
+
+        for (byte b : bytes) {
+            formatter.format("%02x", b);
+        }
+
+        return formatter.toString();
+    }
+
+    private byte[] calculateRFC2104HMAC(String data, String key)
+            throws SignatureException, NoSuchAlgorithmException, InvalidKeyException
+    {
+        SecretKeySpec signingKey = new SecretKeySpec(key.getBytes(), HMAC_SHA1_ALGORITHM);
+        Mac mac = Mac.getInstance(HMAC_SHA1_ALGORITHM);
+        mac.init(signingKey);
+        return mac.doFinal(data.getBytes());
+       // return toHexString(mac.doFinal(data.getBytes()));
     }
 
 }
