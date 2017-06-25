@@ -2,6 +2,7 @@ package com.vasyaevstropov.ucozapitest;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -12,13 +13,21 @@ import com.google.gson.GsonBuilder;
 import com.vasyaevstropov.ucozapitest.Retrofit.ApiRetrofit;
 import com.vasyaevstropov.ucozapitest.Retrofit.OAuthGetRequestToken;
 
+import org.apache.commons.codec.binary.Hex;
 import org.w3c.dom.Text;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -39,8 +48,12 @@ public class MainActivity extends AppCompatActivity {
 
     private String base_url = "http://uapi.ucoz.com/";
     private String oauth_consumer_key = "murka";
-    private String oauth_signature_method = "HMAC-SHA1";
     private String oauth_version = "1.0";
+    private String HMAC_SHA1_ALGORITHM = "HmacSHA1";
+
+    private static String oauth_consumer_secret = "v8qJbaN2NhOnVs6lrqokXJVTvDaGsB";
+    private static String oauth_token_secret = "SA5hjGn4A66R2JqraD51IhxVZZX6ELLW4NHMAVWC";
+    private static String base_string = "GET&http%3A%2F%2Fartmurka.com%2F%2Fuapi%2Fshop%2Frequest&oauth_consumer_key%3Dmurka%26oauth_nonce%3D7ef96e51765611dd4ef66f68475514d8%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1498371809%26oauth_token%3DpaJTN0ZA6KJGAWgHDRKPVNgFBOOe.qMOl8x5pY2W%26page%3Dcategories";
 
 
     @Override
@@ -53,10 +66,36 @@ public class MainActivity extends AppCompatActivity {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                makeRequest();
+                try {
+                    textView.setText(encode( oauth_consumer_secret + "&"+oauth_token_secret, base_string));
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                } catch (NoSuchAlgorithmException e) {
+                    e.printStackTrace();
+                } catch (InvalidKeyException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
             }
         });
     }
+
+    public String encode(String key, String data) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA1");
+        SecretKeySpec secret = new SecretKeySpec(key.getBytes("UTF-8"), mac.getAlgorithm());
+        mac.init(secret);
+        byte[] digest = mac.doFinal(data.getBytes());
+
+        // Base 64 Encode the results
+        String retVal = Base64.encodeToString(digest, Base64.CRLF);
+
+        return retVal;
+
+    }
+
+
 
     private void makeRequest() {
         Map<String, String> map = new HashMap<>();
