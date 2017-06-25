@@ -19,6 +19,7 @@ import org.w3c.dom.Text;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.net.URLEncoder;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -60,20 +61,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        button = (Button)findViewById(R.id.button);
-        textView= (TextView)findViewById(R.id.textView);
+        button = (Button) findViewById(R.id.button);
+        textView = (TextView) findViewById(R.id.textView);
 
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 try {
-                    textView.setText(encode( oauth_consumer_secret + "&"+oauth_token_secret, base_string));
-                } catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
-                } catch (NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                } catch (InvalidKeyException e) {
-                    e.printStackTrace();
+                    makeRequest();
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -82,19 +78,14 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public String encode(String key, String data) throws Exception {
-        Mac mac = Mac.getInstance("HmacSHA1");
-        SecretKeySpec secret = new SecretKeySpec(key.getBytes("UTF-8"), mac.getAlgorithm());
-        mac.init(secret);
-        byte[] digest = mac.doFinal(data.getBytes());
-
-        // Base 64 Encode the results
-        String retVal = Base64.encodeToString(digest, Base64.CRLF);
-
-        return retVal;
-
-    }
-
+//    public String encode(String key, String data) throws Exception {
+//        Mac mac = Mac.getInstance("HmacSHA1");
+//        SecretKeySpec secret = new SecretKeySpec(key.getBytes("UTF-8"), mac.getAlgorithm());
+//        mac.init(secret);
+//        byte[] digest = mac.doFinal(data.getBytes());
+//        String retVal = Base64.encodeToString(digest, Base64.NO_WRAP);
+//        return URLEncoder.encode(retVal,"UTF-8");
+//    }
 
 
     private void makeRequest() {
@@ -109,15 +100,13 @@ public class MainActivity extends AppCompatActivity {
         map.put("oauth_token_secret", "SA5hjGn4A66R2JqraD51IhxVZZX6ELLW4NHMAVWC");
 
         RequestToUcoz requestToUcoz = new RequestToUcoz();
-        try{
-            textView.setText(requestToUcoz.get(map));
-        } catch (Exception e){
 
-        }
+            textView.setText(requestToUcoz.get(map));
+
 
     }
-
 }
+
 
 
 

@@ -3,9 +3,12 @@ package com.vasyaevstropov.ucozapitest;
 
 import android.util.Base64;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.vasyaevstropov.ucozapitest.Retrofit.ApiRetrofit;
+import com.vasyaevstropov.ucozapitest.Retrofit.PagesCategories;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.URLDecoder;
@@ -16,6 +19,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.Formatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.crypto.Mac;
@@ -31,21 +35,16 @@ import retrofit2.converter.scalars.ScalarsConverterFactory;
 
 
 public class RequestToUcoz {
-    private Map<String, String> config;
-    private Map<String, String> params;
-    private final String ENC = "UTF-8";
-     String time, oauth_nonce;
-    private final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
-    public RequestToUcoz() {
-
-
-    }
+    private static Map<String, String> config;
+    private static Map<String, String> params;
+    private static final String ENC = "UTF-8";
+    String time, oauth_nonce;
 
     private String getTime() {
         return String.valueOf(System.currentTimeMillis());
     }
 
-    private void setConfig (Map<String, String> config){
+    private void setConfig(Map<String, String> config) {
         this.config = config;
 
         time = getTime();
@@ -73,7 +72,7 @@ public class RequestToUcoz {
             messageDigest.reset();
             messageDigest.update(st.getBytes());
             digest = messageDigest.digest();
-        } catch (Exception e) {
+        } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
 
@@ -95,95 +94,80 @@ public class RequestToUcoz {
      * return string
      */
 
-    private String getSignature(String method, String url, String params)
-            throws UnsupportedEncodingException, NoSuchAlgorithmException,
-            InvalidKeyException {
-
-        String baseString = method+"&"
-                + URLEncoder.encode(url, "UTF-8") +
-                "&" + URLEncoder.encode(params, "UTF-8");
+    private String getSignature(String method, String url, String params) {
+        String baseString = "";
+        try {
+            baseString = method + "&" + URLEncoder.encode(url, "UTF-8") + "&" + URLEncoder.encode(params, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
         Log.d("Log.d", "Base string: " + baseString);
 
         String a = "";
-        try{
-            a =Base64.encodeToString(calculateRFC2104HMAC(baseString, config.get("oauth_consumer_secret")+"&"+config.get("oauth_token_secret")), Base64.CRLF).trim();
-
-        }catch (Exception e){
+        try {
+            a = encode("oauth_consumer_secret" + "&" + config.get("oauth_token_secret"), baseString);
+        } catch (Exception e) {
             e.printStackTrace();
         }
+
         return a;
     }
 
-    public String get(Map<String, String> config)
-    throws UnsupportedEncodingException,NoSuchAlgorithmException, InvalidKeyException{
+    public String get(Map<String, String> config) {
         setConfig(config);
 
         final StringBuilder answer = null;
 
-        String signature = getSignature("GET","http://artmurka.com/uapi/shop/request",
-                "oauth_consumer_key="+params.get("oauth_consumer_key")+"&"+
-                        "oauth_nonce="+params.get("oauth_nonce")+"&"+
-                        "oauth_signature_method="+"HMAC-SHA1"+"&"+
-                        "oauth_timestamp="+params.get("oauth_timestamp")+"&"+
-                        "oauth_token="+params.get("oauth_token")+"&"+
-                        "oauth_version="+"1.0"+"&"+
-                        "page="+"categories");
-        Log.d("Log.d", signature);
+        String signature = getSignature("GET", "http://artmurka.com/uapi/shop/request",
+                "oauth_consumer_key=" + params.get("oauth_consumer_key") + "&" +
+                        "oauth_nonce=" + params.get("oauth_nonce") + "&" +
+                        "oauth_signature_method=" + "HMAC-SHA1" + "&" +
+                        "oauth_timestamp=" + params.get("oauth_timestamp") + "&" +
+                        "oauth_token=" + params.get("oauth_token") + "&" +
+                        "oauth_version=" + "1.0" + "&" +
+                        "page=" + "categories");
+        Log.d("Log.d", "oauth_signature: " + signature);
 
         HashMap<String, String> map = new HashMap<>();
-        map.put("oauth_signature",signature);
-        map.put("oauth_signature_method","HMAC-SHA1");
-        map.put("oauth_version","1.0");
-        map.put("oauth_consumer_key","murka");
-        map.put("oauth_token",params.get("oauth_token"));
+        map.put("oauth_signature", signature);
+        map.put("oauth_signature_method", "HMAC-SHA1");
+        map.put("oauth_version", "1.0");
+        map.put("oauth_consumer_key", "murka");
+        map.put("oauth_token", params.get("oauth_token"));
         map.put("oauth_nonce", params.get("oauth_nonce"));
-        map.put("oauth_timestamp",params.get("oauth_timestamp"));
-        map.put("page","categories");
+        map.put("oauth_timestamp", params.get("oauth_timestamp"));
+        map.put("page", "categories");
+
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("http://artmurka.com/")
                 .addConverterFactory(GsonConverterFactory.create())
-                .addConverterFactory(ScalarsConverterFactory.create())
                 .build();
-        ApiRetrofit api = retrofit.create(ApiRetrofit.class);
 
-        api.getShopCategories(map).enqueue(new Callback<String>() {
+        ApiRetrofit apiRetrofit = retrofit.create(ApiRetrofit.class);
+
+        apiRetrofit.getShopCategories(signature, "HMAC-SHA1", "1.0", "murka", params.get("oauth_token"),params.get("oauth_nonce"),params.get("oauth_timestamp"),"categories")
+                .enqueue(new Callback<List<PagesCategories>>() {
             @Override
-            public void onResponse(Call<String> call, Response<String> response) {
-                if (response.isSuccessful()) {
-                    if (response.body() != null) {
-                        answer.append(response.body().toString());
-                    }
-                }
+            public void onResponse(Call<List<PagesCategories>> call, Response<List<PagesCategories>> response) {
+                Log.d("Log.d", response.toString());
             }
 
             @Override
-            public void onFailure(Call<String> call, Throwable t) {
+            public void onFailure(Call<List<PagesCategories>> call, Throwable t) {
 
             }
         });
+
         return answer.toString();
     }
 
-
-    private String toHexString(byte[] bytes) {
-        Formatter formatter = new Formatter();
-
-        for (byte b : bytes) {
-            formatter.format("%02x", b);
-        }
-
-        return formatter.toString();
+    public String encode(String key, String data) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA1");
+        SecretKeySpec secret = new SecretKeySpec(key.getBytes("UTF-8"), mac.getAlgorithm());
+        mac.init(secret);
+        byte[] digest = mac.doFinal(data.getBytes());
+        String retVal = Base64.encodeToString(digest, Base64.NO_WRAP);
+        return URLEncoder.encode(retVal, "UTF-8");
     }
-
-    private byte[] calculateRFC2104HMAC(String data, String key)
-            throws SignatureException, NoSuchAlgorithmException, InvalidKeyException
-    {
-        SecretKeySpec signingKey = new SecretKeySpec(key.getBytes(), HMAC_SHA1_ALGORITHM);
-        Mac mac = Mac.getInstance(HMAC_SHA1_ALGORITHM);
-        mac.init(signingKey);
-        return mac.doFinal(data.getBytes());
-       // return toHexString(mac.doFinal(data.getBytes()));
-    }
-
 }
