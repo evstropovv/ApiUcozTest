@@ -1,7 +1,10 @@
 package com.vasyaevstropov.ucozapitest.Retrofit;
 
+
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
+
+
 
 public class Success {
 
@@ -20,7 +23,9 @@ public class Success {
     @SerializedName("cat_name")
     @Expose
     private String catName;
-
+    @SerializedName("meta_data")
+    @Expose
+    private MetaData metaData;
     @SerializedName("childs")
     @Expose
     private String childs;
@@ -66,6 +71,14 @@ public class Success {
 
     public void setCatName(String catName) {
         this.catName = catName;
+    }
+
+    public MetaData getMetaData() {
+        return metaData;
+    }
+
+    public void setMetaData(MetaData metaData) {
+        this.metaData = metaData;
     }
 
     public String getChilds() {

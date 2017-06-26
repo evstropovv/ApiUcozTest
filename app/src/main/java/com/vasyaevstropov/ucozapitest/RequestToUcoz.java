@@ -3,27 +3,22 @@ package com.vasyaevstropov.ucozapitest;
 
 import android.util.Base64;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.vasyaevstropov.ucozapitest.Retrofit.ApiRetrofit;
-import com.vasyaevstropov.ucozapitest.Retrofit.PagesCategories;
+import com.vasyaevstropov.ucozapitest.Retrofit.Example;
+import com.vasyaevstropov.ucozapitest.Retrofit.Success;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SignatureException;
-import java.util.Formatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import javax.crypto.Mac;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import retrofit2.Call;
@@ -31,17 +26,26 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
-import retrofit2.converter.scalars.ScalarsConverterFactory;
 
 
 public class RequestToUcoz {
     private static Map<String, String> config;
     private static Map<String, String> params;
-    private static final String ENC = "UTF-8";
     String time, oauth_nonce;
+    Example success;
+    // in PHP -> time();
+    //in this method we get current time in SEC, from 1 jan 1970
+    public static String getTime() { return String.valueOf(System.currentTimeMillis()/1000);
+    }
 
-    private String getTime() {
-        return String.valueOf(System.currentTimeMillis());
+    //in PHP -> microtime();
+
+    public static String getMicrotime() {
+        long mstime = System.currentTimeMillis();
+        long right_seconds = mstime / 1000;
+        long seconds = mstime / 100000000;
+        double decimal = (mstime - (seconds * 100000000)) / 100000000d;
+        return decimal +" " + right_seconds;
     }
 
     private void setConfig(Map<String, String> config) {
@@ -57,16 +61,20 @@ public class RequestToUcoz {
         params.put("oauth_signature_method", "HMAC-SHA1");
         params.put("oauth_consumer_key", config.get("oauth_consumer_key"));
         params.put("oauth_token", config.get("oauth_token"));
+        params.put("oauth_consumer_secret", config.get("oauth_consumer_secret"));
     }
 
+    //random similar as php -> mt_rand();
+    public static String getRandom() {
+        int x = (int)(Math.random() * 1234567890) + 75000000;
+        return String.valueOf(x);
+    }
 
+    //in this method we get ouath_nonce. MD5(Microtime + random)
     private static String oauth_nonce() {
-        Long time = System.currentTimeMillis();
-        String st = time + "" + Math.random();
-
+        String st = getMicrotime() + "" + getRandom();
         MessageDigest messageDigest = null;
         byte[] digest = new byte[0];
-
         try {
             messageDigest = MessageDigest.getInstance("MD5");
             messageDigest.reset();
@@ -75,14 +83,11 @@ public class RequestToUcoz {
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
-
         BigInteger bigInt = new BigInteger(1, digest);
         String md5Hex = bigInt.toString(16);
-
         while (md5Hex.length() < 32) {
             md5Hex = "0" + md5Hex;
         }
-
         return md5Hex;
     }
 
@@ -105,18 +110,15 @@ public class RequestToUcoz {
 
         String a = "";
         try {
-            a = encode("oauth_consumer_secret" + "&" + config.get("oauth_token_secret"), baseString);
+            a = encode(config.get("oauth_consumer_secret") + "&" + config.get("oauth_token_secret"), baseString);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         return a;
     }
 
-    public String get(Map<String, String> config) {
+    public Example get(Map<String, String> config) {
         setConfig(config);
-
-        final StringBuilder answer = null;
 
         String signature = getSignature("GET", "http://artmurka.com/uapi/shop/request",
                 "oauth_consumer_key=" + params.get("oauth_consumer_key") + "&" +
@@ -128,17 +130,6 @@ public class RequestToUcoz {
                         "page=" + "categories");
         Log.d("Log.d", "oauth_signature: " + signature);
 
-        HashMap<String, String> map = new HashMap<>();
-        map.put("oauth_signature", signature);
-        map.put("oauth_signature_method", "HMAC-SHA1");
-        map.put("oauth_version", "1.0");
-        map.put("oauth_consumer_key", "murka");
-        map.put("oauth_token", params.get("oauth_token"));
-        map.put("oauth_nonce", params.get("oauth_nonce"));
-        map.put("oauth_timestamp", params.get("oauth_timestamp"));
-        map.put("page", "categories");
-
-
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl("http://artmurka.com/")
                 .addConverterFactory(GsonConverterFactory.create())
@@ -147,19 +138,20 @@ public class RequestToUcoz {
         ApiRetrofit apiRetrofit = retrofit.create(ApiRetrofit.class);
 
         apiRetrofit.getShopCategories(signature, "HMAC-SHA1", "1.0", "murka", params.get("oauth_token"),params.get("oauth_nonce"),params.get("oauth_timestamp"),"categories")
-                .enqueue(new Callback<List<PagesCategories>>() {
+                .enqueue(new Callback<Example>() {
             @Override
-            public void onResponse(Call<List<PagesCategories>> call, Response<List<PagesCategories>> response) {
-                Log.d("Log.d", response.toString());
+            public void onResponse(Call<Example> call, Response<Example> response) {
+
+                Log.d("Log.d", response.body().getSuccess().get(0).getCatDescr());
             }
 
             @Override
-            public void onFailure(Call<List<PagesCategories>> call, Throwable t) {
-
+            public void onFailure(Call<Example> call, Throwable t) {
+               Log.d("Log.d","onFailure");
+                t.printStackTrace();
             }
         });
-
-        return answer.toString();
+        return success;
     }
 
     public String encode(String key, String data) throws Exception {
